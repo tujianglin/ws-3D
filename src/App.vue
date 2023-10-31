@@ -6,7 +6,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'
 import TWEEN from '@tweenjs/tween.js'
-import { Button } from 'ant-design-vue'
+import { Button, Popover } from 'ant-design-vue'
 
 export default defineComponent({
   setup() {
@@ -45,8 +45,8 @@ export default defineComponent({
     const initControls = () => {
       // 控制
       controls = new OrbitControls(camera, renderer.domElement)
-      controls.autoRotate = true
-      controls.update()
+      controls.enableDamping = false
+      controls.screenSpacePanning = false // 定义平移时如何平移相机的位置 控制不上下移动
     }
     const initModal = () => {
       const dracoLoader = new DRACOLoader()
@@ -71,13 +71,7 @@ export default defineComponent({
       requestAnimationFrame(render)
       camera?.updateMatrixWorld()
       TWEEN.update()
-      if (rotate.value) {
-        const angle = Date.now() * 0.0004
-        console.log(Math.cos(angle))
-        camera.position.x = Math.sin(angle) * cameraDistance
-        camera.position.z = Math.cos(angle) * cameraDistance
-        camera.lookAt(scene.position)
-      }
+      controls.update()
       renderer.render(scene, camera)
     }
     window.addEventListener('resize', () => {
@@ -95,18 +89,46 @@ export default defineComponent({
     })
 
     const handleRotate = () => {
-      rotate.value = !rotate.value
-      if (!rotate.value) {
-        camera.position.x = 0
-        camera.position.z = cameraDistance
-        camera.lookAt(scene.position)
-      }
+      controls.autoRotate = !controls.autoRotate
+      rotate.value = controls.autoRotate
+    }
+    /* 复原 */
+    const handleReset = () => {
+      controls.autoRotate = false
+      rotate.value = controls.autoRotate
+      const tween = new TWEEN.Tween(camera.position).to({ x: 0, y: 0, z: cameraDistance }, 1000)
+      tween.start()
+    }
+    const showView = (position) => {
+      const tween = new TWEEN.Tween(camera.position).to(position, 1000)
+      tween.start()
     }
     return () => (
       <div class='container'>
         <div class='three' ref={container}></div>
         <div class='actions'>
-          <Button onClick={handleRotate}>{rotate.value ? '复原' : '旋转'}</Button>
+          <Button onClick={handleRotate}>{rotate.value ? '停止' : '旋转'}</Button>
+          <Button onClick={handleReset}>复原</Button>
+          <Popover
+            v-slots={{
+              content: () => (
+                <>
+                  <div>
+                    <Button onClick={() => showView({ x: 0, y: 0, z: cameraDistance })}>主视图</Button>
+                    <Button onClick={() => showView({ x: 0, y: 0, z: -cameraDistance })}>背视图</Button>
+                    <Button onClick={() => showView({ x: 0, y: cameraDistance, z: 0 })}>顶视图</Button>
+                  </div>
+                  <div>
+                    <Button onClick={() => showView({ x: 0, y: -cameraDistance, z: 0 })}>底视图</Button>
+                    <Button onClick={() => showView({ x: -cameraDistance, y: 0, z: 0 })}>左视图</Button>
+                    <Button onClick={() => showView({ x: cameraDistance, y: 0, z: 0 })}>右视图</Button>
+                  </div>
+                </>
+              ),
+            }}
+          >
+            <Button>视角</Button>
+          </Popover>
         </div>
       </div>
     )
