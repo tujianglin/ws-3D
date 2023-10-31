@@ -6,6 +6,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'
 import TWEEN from '@tweenjs/tween.js'
+import { Button } from 'ant-design-vue'
 
 export default defineComponent({
   setup() {
@@ -15,6 +16,8 @@ export default defineComponent({
     let renderer: THREE.WebGLRenderer
     let controls: OrbitControls
     let modal: THREE.Group
+    let cameraDistance
+    const rotate = ref(false)
     /* 初始化场景 */
     const initScene = () => {
       scene = new THREE.Scene()
@@ -42,6 +45,7 @@ export default defineComponent({
     const initControls = () => {
       // 控制
       controls = new OrbitControls(camera, renderer.domElement)
+      controls.autoRotate = true
       controls.update()
     }
     const initModal = () => {
@@ -58,7 +62,7 @@ export default defineComponent({
         boundingBox.getCenter(center)
         modal.position.sub(center)
         const maxDimension = Math.max(size.x, size.y, size.z)
-        const cameraDistance = maxDimension / (2 * Math.tan((Math.PI * camera.fov) / 360))
+        cameraDistance = maxDimension / (2 * Math.tan((Math.PI * camera.fov) / 360))
         camera.position.z = cameraDistance
         scene.add(modal)
       })
@@ -67,6 +71,13 @@ export default defineComponent({
       requestAnimationFrame(render)
       camera?.updateMatrixWorld()
       TWEEN.update()
+      if (rotate.value) {
+        const angle = Date.now() * 0.0004
+        console.log(Math.cos(angle))
+        camera.position.x = Math.sin(angle) * cameraDistance
+        camera.position.z = Math.cos(angle) * cameraDistance
+        camera.lookAt(scene.position)
+      }
       renderer.render(scene, camera)
     }
     window.addEventListener('resize', () => {
@@ -82,7 +93,23 @@ export default defineComponent({
       initModal()
       render()
     })
-    return () => <div class='container' ref={container}></div>
+
+    const handleRotate = () => {
+      rotate.value = !rotate.value
+      if (!rotate.value) {
+        camera.position.x = 0
+        camera.position.z = cameraDistance
+        camera.lookAt(scene.position)
+      }
+    }
+    return () => (
+      <div class='container'>
+        <div class='three' ref={container}></div>
+        <div class='actions'>
+          <Button onClick={handleRotate}>{rotate.value ? '复原' : '旋转'}</Button>
+        </div>
+      </div>
+    )
   },
 })
 </script>
@@ -90,5 +117,17 @@ export default defineComponent({
 .container {
   width: 100%;
   height: 100%;
+  position: relative;
+
+  .three {
+    width: 100%;
+    height: 100%;
+  }
+  .actions {
+    position: absolute;
+    bottom: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+  }
 }
 </style>

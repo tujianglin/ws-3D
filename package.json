@@ -12,6 +12,7 @@
     "@tweenjs/tween.js": "^21.0.0",
     "@types/node": "^20.8.9",
     "@types/three": "^0.158.1",
+    "ant-design-vue": "4.x",
     "three": "^0.158.0",
     "vue": "^3.3.4"
   },
