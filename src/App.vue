@@ -1,12 +1,12 @@
 <script lang="tsx">
-import { defineComponent, onMounted, ref } from 'vue'
+import { defineComponent, onMounted, ref, reactive, watch } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'
 import TWEEN from '@tweenjs/tween.js'
-import { Button, Popover } from 'ant-design-vue'
+import { Button, Popover, InputNumber } from 'ant-design-vue'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment'
 
 export default defineComponent({
   setup() {
@@ -16,16 +16,74 @@ export default defineComponent({
     let renderer: THREE.WebGLRenderer
     let controls: OrbitControls
     let modal: THREE.Group
-    let cameraDistance
+    // let cameraDistance
     const rotate = ref(false)
+    const zoom = ref(1)
+    const position = reactive({
+      x: 0,
+      y: 20,
+      z: 30,
+    })
+
+    const positions = [
+      {
+        name: '主视图',
+        target: {
+          x: 0,
+          y: 20,
+          z: 30,
+        },
+      },
+      {
+        name: '背视图',
+        target: {
+          x: 0,
+          y: 20,
+          z: -30,
+        },
+      },
+      {
+        name: '右视图',
+        target: {
+          x: 50,
+          y: 10,
+          z: 0,
+        },
+      },
+      {
+        name: '左视图',
+        target: {
+          x: -50,
+          y: 10,
+          z: 0,
+        },
+      },
+      {
+        name: '俯视图',
+        target: {
+          x: -50,
+          y: 32,
+          z: 0,
+        },
+      },
+      {
+        name: '底视图',
+        target: {
+          x: -50,
+          y: -32,
+          z: 0,
+        },
+      },
+    ]
+
+    watch(position, (val) => {
+      const tween = new TWEEN.Tween(camera.position).to(val, 1000)
+      tween.start()
+    })
     /* 初始化场景 */
     const initScene = () => {
       scene = new THREE.Scene()
-    }
-    /* 初始化相机 */
-    const initCamera = () => {
-      camera = new THREE.PerspectiveCamera(60, container.value.clientWidth / container.value.clientHeight)
-      scene.add(camera)
+      scene.background = new THREE.Color(0x152940)
     }
     const initLight = () => {
       // 室内光
@@ -33,6 +91,12 @@ export default defineComponent({
       const room = new RoomEnvironment()
       scene.environment = pmremGenerator.fromScene(room, 0.04).texture
       scene.background = new THREE.Color(0x152940)
+    }
+    /* 初始化相机 */
+    const initCamera = () => {
+      camera = new THREE.PerspectiveCamera(50, container.value.clientWidth / container.value.clientHeight)
+      camera.position.set(position.x, position.y, position.z)
+      scene.add(camera)
     }
     /* 初始化渲染 */
     const initRenderer = () => {
@@ -53,17 +117,18 @@ export default defineComponent({
       dracoLoader.setDecoderPath('./draco/')
       const loader = new GLTFLoader()
       loader.setDRACOLoader(dracoLoader)
-      loader.load('./demo/002.gltf', (gltf) => {
+      loader.load('./002.gltf', (gltf) => {
         modal = gltf.scene
-        const boundingBox = new THREE.Box3().setFromObject(modal)
-        const size = new THREE.Vector3()
-        boundingBox.getSize(size)
-        const center = new THREE.Vector3()
-        boundingBox.getCenter(center)
-        modal.position.sub(center)
-        const maxDimension = Math.max(size.x, size.y, size.z)
-        cameraDistance = maxDimension / (2 * Math.tan((Math.PI * camera.fov) / 360))
-        camera.position.z = cameraDistance
+        // camera = gltf.cameras[0] as THREE.PerspectiveCamera
+        // const boundingBox = new THREE.Box3().setFromObject(modal)
+        // const size = new THREE.Vector3()
+        // boundingBox.getSize(size)
+        // const center = new THREE.Vector3()
+        // boundingBox.getCenter(center)
+        // modal.position.sub(center)
+        // const maxDimension = Math.max(size.x, size.y, size.z)
+        // cameraDistance = maxDimension / (2 * Math.tan((Math.PI * camera.fov) / 360))
+        // camera.position.z = cameraDistance
         scene.add(modal)
       })
     }
@@ -83,8 +148,8 @@ export default defineComponent({
       initCamera()
       initRenderer()
       initControls()
-      initLight()
       initModal()
+      initLight()
       render()
     })
 
@@ -96,12 +161,28 @@ export default defineComponent({
     const handleReset = () => {
       controls.autoRotate = false
       rotate.value = controls.autoRotate
-      const tween = new TWEEN.Tween(camera.position).to({ x: 0, y: 0, z: cameraDistance }, 1000)
+      const tween = new TWEEN.Tween(camera.position).to(positions[0].target, 1000)
       tween.start()
     }
     const showView = (position) => {
       const tween = new TWEEN.Tween(camera.position).to(position, 1000)
       tween.start()
+      zoom.value = 1
+      const tween1 = new TWEEN.Tween(modal.scale).to({ x: zoom.value, y: zoom.value, z: zoom.value }, 1000)
+      tween1.start()
+    }
+    /* 放大 */
+    const zoomUp = () => {
+      zoom.value += 0.2
+      const tween = new TWEEN.Tween(modal.scale).to({ x: zoom.value, y: zoom.value, z: zoom.value }, 1000)
+      tween.start()
+    }
+    const zoomDown = () => {
+      if (zoom.value >= 0.21) {
+        zoom.value -= 0.2
+        const tween = new TWEEN.Tween(modal.scale).to({ x: zoom.value, y: zoom.value, z: zoom.value }, 1000)
+        tween.start()
+      }
     }
     return () => (
       <div class='container'>
@@ -113,22 +194,22 @@ export default defineComponent({
             v-slots={{
               content: () => (
                 <>
-                  <div>
-                    <Button onClick={() => showView({ x: 0, y: 0, z: cameraDistance })}>主视图</Button>
-                    <Button onClick={() => showView({ x: 0, y: 0, z: -cameraDistance })}>背视图</Button>
-                    <Button onClick={() => showView({ x: 0, y: cameraDistance, z: 0 })}>顶视图</Button>
-                  </div>
-                  <div>
-                    <Button onClick={() => showView({ x: 0, y: -cameraDistance, z: 0 })}>底视图</Button>
-                    <Button onClick={() => showView({ x: -cameraDistance, y: 0, z: 0 })}>左视图</Button>
-                    <Button onClick={() => showView({ x: cameraDistance, y: 0, z: 0 })}>右视图</Button>
-                  </div>
+                  {positions.map((i) => (
+                    <Button onClick={() => showView(i.target)}>{i.name}</Button>
+                  ))}
                 </>
               ),
             }}
           >
             <Button>视角</Button>
           </Popover>
+          <Button onClick={zoomUp}>放大</Button>
+          <Button onClick={zoomDown}>缩小</Button>
+          <div>
+            <InputNumber v-model:value={position.x} step={1}></InputNumber>
+            <InputNumber v-model:value={position.y} step={1}></InputNumber>
+            <InputNumber v-model:value={position.z} step={1}></InputNumber>
+          </div>
         </div>
       </div>
     )
