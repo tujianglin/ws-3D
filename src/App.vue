@@ -7,7 +7,9 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'
 import TWEEN from '@tweenjs/tween.js'
 import { Button, Popover, InputNumber } from 'ant-design-vue'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment'
-
+import { useWebSocket } from '@vueuse/core'
+import { positions, moveData } from './data/index'
+import { wsMove, wsRotate, wsShowOrHide, wsStatus } from './data/handler'
 export default defineComponent({
   setup() {
     const container = ref<HTMLDivElement>()
@@ -16,7 +18,6 @@ export default defineComponent({
     let renderer: THREE.WebGLRenderer
     let controls: OrbitControls
     let modal: THREE.Group
-    // let cameraDistance
     const rotate = ref(false)
     const zoom = ref(1)
     const position = reactive({
@@ -25,60 +26,103 @@ export default defineComponent({
       z: 30,
     })
 
-    const positions = [
-      {
-        name: '主视图',
-        target: {
-          x: 0,
-          y: 20,
-          z: 30,
-        },
+    const { data, send, status } = useWebSocket('ws://192.168.1.40:2346/ws')
+    watch(
+      data,
+      (val) => {
+        const { Contents, Result } = val
+        switch (Result) {
+          // 初始化
+          case 'SceneInit':
+            Contents.map((i) => {
+              const node = scene.getObjectByName(i.number)
+              if (node) {
+                if (i.position) {
+                  const [x = 0, y = 0, z = 0] = i?.position.split(',').map((i) => +i)
+                  new TWEEN.Tween(node.position).to({ x, y, z }, 1000).start()
+                }
+                if (i.rotation) {
+                  if (i.rotation === '0') return
+                  const [x = 0, y = 0, z = 0] = i?.rotation.split(',').map((i) => +i)
+                  new TWEEN.Tween(node.rotation).to({ x: THREE.MathUtils.degToRad(x), y: THREE.MathUtils.degToRad(y), z: THREE.MathUtils.degToRad(z) }, 1000).start()
+                }
+                if (i.status) {
+                  wsStatus(i, scene)
+                }
+              }
+            })
+            break
+          // 动作
+          case 'actions':
+            Contents.map((i) => {
+              switch (i.type) {
+                case '移动':
+                  wsMove(i, scene)
+                  break
+                case '机器人旋转':
+                  wsRotate(i, scene)
+                  break
+                case '显示':
+                  wsShowOrHide(i, scene, true)
+                  break
+                case '隐藏':
+                  wsShowOrHide(i, scene, false)
+                  break
+                case '状态':
+                  wsStatus(i, scene)
+                  break
+                case '开门':
+                  const node = scene.getObjectByName(i.number)
+                  console.log(node)
+                  break
+                default:
+                  break
+              }
+            })
+            break
+          // 镜头比例缩放
+          case 'WillScaleTheScene':
+            Contents.map((i) => {
+              camera.fov = +i.size
+            })
+            break
+          default:
+            break
+        }
       },
       {
-        name: '背视图',
-        target: {
-          x: 0,
-          y: 20,
-          z: -30,
-        },
-      },
-      {
-        name: '右视图',
-        target: {
-          x: 50,
-          y: 10,
-          z: 0,
-        },
-      },
-      {
-        name: '左视图',
-        target: {
-          x: -50,
-          y: 10,
-          z: 0,
-        },
-      },
-      {
-        name: '俯视图',
-        target: {
-          x: -50,
-          y: 32,
-          z: 0,
-        },
-      },
-      {
-        name: '底视图',
-        target: {
-          x: -50,
-          y: -32,
-          z: 0,
-        },
-      },
-    ]
-
+        deep: true,
+      }
+    )
+    const handleMove = () => {
+      moveData.map((i) => {
+        switch (i.type) {
+          case '移动':
+            wsMove(i, scene)
+            break
+          case '机器人旋转':
+            wsRotate(i, scene)
+            break
+          case '显示':
+            wsShowOrHide(i, scene, true)
+            break
+          case '隐藏':
+            wsShowOrHide(i, scene, false)
+            break
+          case '状态':
+            wsStatus(i, scene)
+            break
+          case '开门':
+            const node = scene.getObjectByName(i.number)
+            console.log(node)
+            break
+          default:
+            break
+        }
+      })
+    }
     watch(position, (val) => {
-      const tween = new TWEEN.Tween(camera.position).to(val, 1000)
-      tween.start()
+      new TWEEN.Tween(camera.position).to(val, 1000).start()
     })
     /* 初始化场景 */
     const initScene = () => {
@@ -94,7 +138,7 @@ export default defineComponent({
     }
     /* 初始化相机 */
     const initCamera = () => {
-      camera = new THREE.PerspectiveCamera(50, container.value.clientWidth / container.value.clientHeight)
+      camera = new THREE.PerspectiveCamera(60, container.value.clientWidth / container.value.clientHeight)
       camera.position.set(position.x, position.y, position.z)
       scene.add(camera)
     }
@@ -112,28 +156,31 @@ export default defineComponent({
       controls.enableDamping = false
       controls.screenSpacePanning = false // 定义平移时如何平移相机的位置 控制不上下移动
     }
-    const initModal = () => {
+    const initModal = async () => {
       const dracoLoader = new DRACOLoader()
       dracoLoader.setDecoderPath('./draco/')
       const loader = new GLTFLoader()
       loader.setDRACOLoader(dracoLoader)
-      loader.load('./002.gltf', (gltf) => {
-        modal = gltf.scene
-        // camera = gltf.cameras[0] as THREE.PerspectiveCamera
-        // const boundingBox = new THREE.Box3().setFromObject(modal)
-        // const size = new THREE.Vector3()
-        // boundingBox.getSize(size)
-        // const center = new THREE.Vector3()
-        // boundingBox.getCenter(center)
-        // modal.position.sub(center)
-        // const maxDimension = Math.max(size.x, size.y, size.z)
-        // cameraDistance = maxDimension / (2 * Math.tan((Math.PI * camera.fov) / 360))
-        // camera.position.z = cameraDistance
-        scene.add(modal)
-      })
+      const gltf = await loader.loadAsync('./001.glb')
+      modal = gltf.scene
+      // camera = gltf.cameras[0] as THREE.PerspectiveCamera
+      // const boundingBox = new THREE.Box3().setFromObject(modal)
+      // const size = new THREE.Vector3()
+      // boundingBox.getSize(size)
+      // const center = new THREE.Vector3()
+      // boundingBox.getCenter(center)
+      // modal.position.sub(center)
+      // const maxDimension = Math.max(size.x, size.y, size.z)
+      // cameraDistance = maxDimension / (2 * Math.tan((Math.PI * camera.fov) / 360))
+      // camera.position.z = cameraDistance
+      scene.add(modal)
+      if (status.value === 'OPEN') {
+        send(JSON.stringify({ Result: 'SceneInit' }))
+      }
     }
     const render = () => {
       requestAnimationFrame(render)
+      camera.updateProjectionMatrix()
       camera?.updateMatrixWorld()
       TWEEN.update()
       controls.update()
@@ -161,27 +208,22 @@ export default defineComponent({
     const handleReset = () => {
       controls.autoRotate = false
       rotate.value = controls.autoRotate
-      const tween = new TWEEN.Tween(camera.position).to(positions[0].target, 1000)
-      tween.start()
+      new TWEEN.Tween(camera.position).to(positions[0].target, 1000).start()
     }
     const showView = (position) => {
-      const tween = new TWEEN.Tween(camera.position).to(position, 1000)
-      tween.start()
+      new TWEEN.Tween(camera.position).to(position, 1000).start()
       zoom.value = 1
-      const tween1 = new TWEEN.Tween(modal.scale).to({ x: zoom.value, y: zoom.value, z: zoom.value }, 1000)
-      tween1.start()
+      new TWEEN.Tween(modal.scale).to({ x: zoom.value, y: zoom.value, z: zoom.value }, 1000).start()
     }
     /* 放大 */
     const zoomUp = () => {
       zoom.value += 0.2
-      const tween = new TWEEN.Tween(modal.scale).to({ x: zoom.value, y: zoom.value, z: zoom.value }, 1000)
-      tween.start()
+      new TWEEN.Tween(modal.scale).to({ x: zoom.value, y: zoom.value, z: zoom.value }, 1000).start()
     }
     const zoomDown = () => {
       if (zoom.value >= 0.21) {
         zoom.value -= 0.2
-        const tween = new TWEEN.Tween(modal.scale).to({ x: zoom.value, y: zoom.value, z: zoom.value }, 1000)
-        tween.start()
+        new TWEEN.Tween(modal.scale).to({ x: zoom.value, y: zoom.value, z: zoom.value }, 1000).start()
       }
     }
     return () => (
@@ -205,6 +247,7 @@ export default defineComponent({
           </Popover>
           <Button onClick={zoomUp}>放大</Button>
           <Button onClick={zoomDown}>缩小</Button>
+          <Button onClick={handleMove}>移动</Button>
           <div>
             <InputNumber v-model:value={position.x} step={1}></InputNumber>
             <InputNumber v-model:value={position.y} step={1}></InputNumber>

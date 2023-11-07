@@ -12,11 +12,14 @@
     "@tweenjs/tween.js": "^21.0.0",
     "@types/node": "^20.8.9",
     "@types/three": "^0.158.1",
+    "@vueuse/core": "^10.5.0",
     "ant-design-vue": "4.x",
+    "lodash-es": "^4.17.21",
     "three": "^0.158.0",
     "vue": "^3.3.4"
   },
   "devDependencies": {
+    "@types/lodash-es": "^4.17.10",
     "@vitejs/plugin-vue": "^4.2.3",
     "@vitejs/plugin-vue-jsx": "^3.0.2",
     "less": "^4.2.0",
