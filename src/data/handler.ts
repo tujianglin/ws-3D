@@ -6,30 +6,31 @@ import { statusData } from './index'
 export const wsMove = (i, scene) => {
   const node = scene.getObjectByName(i.number)
   if (node) {
+    const duration = i.duration ? +i.duration * 1000 : 1000
     switch (i.axis) {
       case 'O':
         const [x, y, z] = i?.value.split(',').map((i) => +i)
-        new TWEEN.Tween(node.position).to({ x, y, z }, +i.duration * 1000).start()
+        new TWEEN.Tween(node.position).to({ x, y, z }, duration).start()
         break
       case 'X':
         if (i.value.includes('#')) {
-          new TWEEN.Tween(node.position).to({ x: i.value.replace(/#/g, '') }, +i.duration * 1000).start()
+          new TWEEN.Tween(node.position).to({ x: i.value.replace(/#/g, '') }, duration).start()
         } else {
-          new TWEEN.Tween(node.position).to({ x: +i.value }, +i.duration * 1000).start()
+          new TWEEN.Tween(node.position).to({ x: +i.value }, duration).start()
         }
         break
       case 'Y':
         if (i.value.includes('#')) {
-          new TWEEN.Tween(node.position).to({ y: i.value.replace(/#/g, '') }, +i.duration * 1000).start()
+          new TWEEN.Tween(node.position).to({ y: i.value.replace(/#/g, '') }, duration).start()
         } else {
-          new TWEEN.Tween(node.position).to({ y: +i.value }, +i.duration * 1000).start()
+          new TWEEN.Tween(node.position).to({ y: +i.value }, duration).start()
         }
         break
       case 'Z':
         if (i.value.includes('#')) {
-          new TWEEN.Tween(node.position).to({ z: i.value.replace(/#/g, '') }, +i.duration * 1000).start()
+          new TWEEN.Tween(node.position).to({ z: i.value.replace(/#/g, '') }, duration).start()
         } else {
-          new TWEEN.Tween(node.position).to({ z: +i.value }, +i.duration * 1000).start()
+          new TWEEN.Tween(node.position).to({ z: +i.value }, duration).start()
         }
         break
       default:
@@ -41,22 +42,23 @@ export const wsMove = (i, scene) => {
 export const wsRotate = (i, scene) => {
   const node = scene.getObjectByName(i.number)
   if (node) {
+    const duration = i.duration ? +i.duration * 1000 : 1000
+    const value = THREE.MathUtils.degToRad(+i.value)
     switch (i.axis) {
       case 'O':
         const [x, y, z] = i?.value.split(',').map((i) => +i)
-        new TWEEN.Tween(node.rotation).to({ x, y, z }, +i.duration * 1000).start()
+        new TWEEN.Tween(node.rotation).to({ x, y, z }, duration).start()
         break
       case 'X':
-        new TWEEN.Tween(node.rotation).to({ x: THREE.MathUtils.degToRad(+i.value) }, +i.duration * 1000).start()
+        new TWEEN.Tween(node.rotation).to({ x: value }, duration).start()
         break
       case 'Y':
-        new TWEEN.Tween(node.rotation).to({ y: THREE.MathUtils.degToRad(+i.value) }, +i.duration * 1000).start()
+        new TWEEN.Tween(node.rotation).to({ y: value }, duration).start()
         break
       case 'Z':
-        new TWEEN.Tween(node.rotation).to({ z: THREE.MathUtils.degToRad(+i.value) }, +i.duration * 1000).start()
+        new TWEEN.Tween(node.rotation).to({ z: value }, duration).start()
         break
       default:
-        console.log(111)
         break
     }
   }
@@ -74,7 +76,7 @@ export const wsShowOrHide = (i, scene, bool) => {
 export const wsStatus = (i, scene) => {
   const node = scene.getObjectByName(i.number)
   node.traverse((child: any) => {
-    const target = statusData.find((j) => j.label === i.status)
+    const target = statusData.find((j) => j.label === i.value)
     if (target.light && child.name.includes(target.light)) {
       child.material = target.value
     }

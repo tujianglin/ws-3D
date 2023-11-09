@@ -8,8 +8,9 @@ import TWEEN from '@tweenjs/tween.js'
 import { Button, Popover, InputNumber } from 'ant-design-vue'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment'
 import { useWebSocket } from '@vueuse/core'
-import { positions, moveData } from './data/index'
+import { positions, bindBone } from './data/index'
 import { wsMove, wsRotate, wsShowOrHide, wsStatus } from './data/handler'
+import { assign } from 'lodash-es'
 export default defineComponent({
   setup() {
     const container = ref<HTMLDivElement>()
@@ -26,27 +27,35 @@ export default defineComponent({
       z: 30,
     })
 
-    const { data, send, status } = useWebSocket('ws://192.168.1.40:2346/ws')
+    const { data, send, status } = useWebSocket('ws://192.168.1.40:1711/ws')
     watch(
       data,
       (val) => {
-        const { Contents, Result } = val
+        const { Contents, Result } = JSON.parse(val)
         switch (Result) {
           // 初始化
           case 'SceneInit':
             Contents.map((i) => {
               const node = scene.getObjectByName(i.number)
+              const bind: any = bindBone.find((j) => i.number === j.label)?.value
               if (node) {
-                if (i.position) {
-                  const [x = 0, y = 0, z = 0] = i?.position.split(',').map((i) => +i)
-                  new TWEEN.Tween(node.position).to({ x, y, z }, 1000).start()
+                if (bind) {
+                  // 移动
+                  if (i.position) {
+                    if (i.position === '0') return
+                    bind.value = i.position
+                    wsMove(bind, scene)
+                  }
+                  // 旋转
+                  if (i.rotation) {
+                    if (i.rotation === '0') return
+                    bind.value = i.rotation
+                    wsRotate(bind, scene)
+                  }
                 }
-                if (i.rotation) {
-                  if (i.rotation === '0') return
-                  const [x = 0, y = 0, z = 0] = i?.rotation.split(',').map((i) => +i)
-                  new TWEEN.Tween(node.rotation).to({ x: THREE.MathUtils.degToRad(x), y: THREE.MathUtils.degToRad(y), z: THREE.MathUtils.degToRad(z) }, 1000).start()
-                }
+                // 状态
                 if (i.status) {
+                  i.value = i.status
                   wsStatus(i, scene)
                 }
               }
@@ -54,7 +63,13 @@ export default defineComponent({
             break
           // 动作
           case 'actions':
+            console.log(Contents)
+
             Contents.map((i) => {
+              const bind: any = bindBone.find((j) => i.number === j.label)?.value
+              if (bind) {
+                i = assign(i, { axis: bind.axis })
+              }
               switch (i.type) {
                 case '移动':
                   wsMove(i, scene)
@@ -94,33 +109,7 @@ export default defineComponent({
         deep: true,
       }
     )
-    const handleMove = () => {
-      moveData.map((i) => {
-        switch (i.type) {
-          case '移动':
-            wsMove(i, scene)
-            break
-          case '机器人旋转':
-            wsRotate(i, scene)
-            break
-          case '显示':
-            wsShowOrHide(i, scene, true)
-            break
-          case '隐藏':
-            wsShowOrHide(i, scene, false)
-            break
-          case '状态':
-            wsStatus(i, scene)
-            break
-          case '开门':
-            const node = scene.getObjectByName(i.number)
-            console.log(node)
-            break
-          default:
-            break
-        }
-      })
-    }
+    const handleMove = () => {}
     watch(position, (val) => {
       new TWEEN.Tween(camera.position).to(val, 1000).start()
     })
