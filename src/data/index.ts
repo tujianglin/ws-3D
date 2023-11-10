@@ -59,17 +59,17 @@ export const statusData = [
   },
   {
     label: '报警',
-    value: new THREE.MeshBasicMaterial({ color: 0xff0000 }),
+    value: '#ff0000',
     light: '三色灯红',
   },
   {
     label: '加工',
-    value: new THREE.MeshBasicMaterial({ color: 0x00ff00 }),
+    value: '#00ff00',
     light: '三色灯绿',
   },
   {
     label: '空闲',
-    value: new THREE.MeshBasicMaterial({ color: 0xffff00 }),
+    value: '#ffff00',
     light: '三色灯黄',
   },
 ]
@@ -78,10 +78,6 @@ export const wsData = {
   Result: 'SceneInit',
   Contents: [
     { number: 'DMU-80FD', position: '', rotation: '', status: '关机' },
-    { number: 'DMU-83P-001', position: '', rotation: '', status: '关机' },
-    { number: 'DMU-83P-002', position: '', rotation: '', status: '关机' },
-    { number: 'DMU-83P-003', position: '', rotation: '', status: '关机' },
-    { number: 'DMU-83P-004', position: '', rotation: '', status: '关机' },
     { number: '油机立车1', position: '', rotation: '', status: '关机' },
     { number: '油机立车2', position: '', rotation: '', status: '关机' },
     { number: '油机立车3', position: '', rotation: '', status: '关机' },
@@ -127,9 +123,8 @@ export const wsData = {
     { number: 'KW036', position: '', rotation: '', status: '关机' },
     { number: 'KW035', position: '', rotation: '', status: '关机' },
     { number: 'DMU-83P-001', position: '', rotation: '', status: '报警' },
-    { number: 'DMU-83P-002', position: '', rotation: '', status: '关机' },
-    { number: 'DMU-83P-003', position: '', rotation: '', status: '关机' },
-    { number: 'DMU-83PD', position: '', rotation: '', status: '关机' },
+    { number: 'DMU-83P-002', position: '', rotation: '', status: '加工' },
+    { number: 'DMU-83P-003', position: '', rotation: '', status: '空闲' },
     { number: 'DMU前门', position: '', rotation: '', status: '关机' },
     { number: 'DMU前门-001', position: '', rotation: '', status: '关机' },
     { number: 'DMU前门-002', position: '', rotation: '', status: '关机' },

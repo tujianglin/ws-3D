@@ -4,11 +4,16 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass'
+import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass'
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass'
+import { GammaCorrectionShader } from 'three/examples/jsm/shaders/GammaCorrectionShader'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer'
 import TWEEN from '@tweenjs/tween.js'
 import { Button, Popover, InputNumber } from 'ant-design-vue'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment'
-import { useWebSocket } from '@vueuse/core'
-import { positions, bindBone } from './data/index'
+// import { useWebSocket } from '@vueuse/core'
+import { positions, bindBone, statusData, wsData } from './data/index'
 import { wsMove, wsRotate, wsShowOrHide, wsStatus } from './data/handler'
 import { assign } from 'lodash-es'
 export default defineComponent({
@@ -19,6 +24,8 @@ export default defineComponent({
     let renderer: THREE.WebGLRenderer
     let controls: OrbitControls
     let modal: THREE.Group
+    let composer: EffectComposer
+    const allStatus = ref([])
     const rotate = ref(false)
     const zoom = ref(1)
     const position = reactive({
@@ -27,89 +34,95 @@ export default defineComponent({
       z: 30,
     })
 
-    const { data, send, status } = useWebSocket('ws://192.168.1.40:1711/ws')
-    watch(
-      data,
-      (val) => {
-        const { Contents, Result } = JSON.parse(val)
-        switch (Result) {
-          // 初始化
-          case 'SceneInit':
-            Contents.map((i) => {
-              const node = scene.getObjectByName(i.number)
-              const bind: any = bindBone.find((j) => i.number === j.label)?.value
-              if (node) {
-                if (bind) {
-                  // 移动
-                  if (i.position) {
-                    if (i.position === '0') return
-                    bind.value = i.position
-                    wsMove(bind, scene)
-                  }
-                  // 旋转
-                  if (i.rotation) {
-                    if (i.rotation === '0') return
-                    bind.value = i.rotation
-                    wsRotate(bind, scene)
-                  }
-                }
-                // 状态
-                if (i.status) {
-                  i.value = i.status
-                  wsStatus(i, scene)
-                }
-              }
-            })
-            break
-          // 动作
-          case 'actions':
-            console.log(Contents)
-
-            Contents.map((i) => {
-              const bind: any = bindBone.find((j) => i.number === j.label)?.value
+    // const { data, send, status } = useWebSocket('ws://192.168.1.40:1711/ws')
+    const customData = ref()
+    watch(customData, (val) => {
+      const { Contents, Result } = val as any
+      switch (Result) {
+        // 初始化
+        case 'SceneInit':
+          const status = []
+          Contents.map((i) => {
+            const node = scene.getObjectByName(i.number)
+            const bind: any = bindBone.find((j) => i.number === j.label)?.value
+            if (node) {
               if (bind) {
-                i = assign(i, { axis: bind.axis })
+                // 移动
+                if (i.position) {
+                  if (i.position === '0') return
+                  bind.value = i.position
+                  wsMove(bind, scene)
+                }
+                // 旋转
+                if (i.rotation) {
+                  if (i.rotation === '0') return
+                  bind.value = i.rotation
+                  wsRotate(bind, scene)
+                }
               }
-              switch (i.type) {
-                case '移动':
-                  wsMove(i, scene)
-                  break
-                case '机器人旋转':
-                  wsRotate(i, scene)
-                  break
-                case '显示':
-                  wsShowOrHide(i, scene, true)
-                  break
-                case '隐藏':
-                  wsShowOrHide(i, scene, false)
-                  break
-                case '状态':
-                  wsStatus(i, scene)
-                  break
-                case '开门':
-                  const node = scene.getObjectByName(i.number)
-                  console.log(node)
-                  break
-                default:
-                  break
+              // 状态
+              if (i.status && i.status !== '关机') {
+                i.value = i.status
+                status.push(i)
+              }
+            }
+          })
+          status.map((i) => {
+            const node = scene.getObjectByName(i.number) as THREE.Mesh
+            node.traverse((child: any) => {
+              const target = statusData.find((j) => j.label === i.value)
+              if (target.light && child.name.includes(target.light)) {
+                allStatus.value.push({
+                  node: child,
+                  color: target.value,
+                })
               }
             })
-            break
-          // 镜头比例缩放
-          case 'WillScaleTheScene':
-            Contents.map((i) => {
-              camera.fov = +i.size
-            })
-            break
-          default:
-            break
-        }
-      },
-      {
-        deep: true,
+          })
+          initOutlinePass()
+          break
+        // 动作
+        case 'actions':
+          Contents.map((i) => {
+            const bind: any = bindBone.find((j) => i.number === j.label)?.value
+            if (bind) {
+              i = assign(i, { axis: bind.axis })
+            }
+            switch (i.type) {
+              case '移动':
+                wsMove(i, scene)
+                break
+              case '机器人旋转':
+                wsRotate(i, scene)
+                break
+              case '显示':
+                wsShowOrHide(i, scene, true)
+                break
+              case '隐藏':
+                wsShowOrHide(i, scene, false)
+                break
+              case '状态':
+                wsStatus(i, scene)
+                break
+              case '开门':
+                const node = scene.getObjectByName(i.number)
+                console.log(node)
+                break
+              default:
+                break
+            }
+          })
+          break
+        // 镜头比例缩放
+        case 'WillScaleTheScene':
+          Contents.map((i) => {
+            camera.fov = +i.size
+          })
+          break
+        default:
+          break
       }
-    )
-    const handleMove = () => {}
+    })
     watch(position, (val) => {
       new TWEEN.Tween(camera.position).to(val, 1000).start()
     })
@@ -136,6 +149,7 @@ export default defineComponent({
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
       renderer.setPixelRatio(window.devicePixelRatio)
       renderer.setSize(container.value.clientWidth, container.value.clientHeight)
+      composer = new EffectComposer(renderer)
       container.value.appendChild(renderer.domElement)
     }
 
@@ -152,28 +166,40 @@ export default defineComponent({
       loader.setDRACOLoader(dracoLoader)
       const gltf = await loader.loadAsync('./001.glb')
       modal = gltf.scene
-      // camera = gltf.cameras[0] as THREE.PerspectiveCamera
-      // const boundingBox = new THREE.Box3().setFromObject(modal)
-      // const size = new THREE.Vector3()
-      // boundingBox.getSize(size)
-      // const center = new THREE.Vector3()
-      // boundingBox.getCenter(center)
-      // modal.position.sub(center)
-      // const maxDimension = Math.max(size.x, size.y, size.z)
-      // cameraDistance = maxDimension / (2 * Math.tan((Math.PI * camera.fov) / 360))
-      // camera.position.z = cameraDistance
       scene.add(modal)
-      if (status.value === 'OPEN') {
-        send(JSON.stringify({ Result: 'SceneInit' }))
-      }
+      // if (status.value === 'OPEN') {
+      //   send(JSON.stringify({ Result: 'SceneInit' }))
+      // }
+      customData.value = wsData
+    }
+    const initOutlinePass = () => {
+      let renderScene = new RenderPass(scene, camera)
+      composer.addPass(renderScene)
+      const gammaCorrectionShader = new ShaderPass(GammaCorrectionShader)
+      composer.addPass(gammaCorrectionShader)
+      allStatus.value.map((i) => {
+        let outlinePass = new OutlinePass(new THREE.Vector2(container.value.clientWidth, container.value.clientHeight), scene, camera, [i.node])
+        outlinePass.renderToScreen = true
+        outlinePass.edgeGlow = 1
+        outlinePass.usePatternTexture = false
+        outlinePass.edgeThickness = 2
+        outlinePass.edgeStrength = 5
+        outlinePass.pulsePeriod = 2
+        outlinePass.visibleEdgeColor.set(i.color)
+        outlinePass.hiddenEdgeColor.set(i.color)
+        composer.addPass(outlinePass)
+      })
     }
     const render = () => {
       requestAnimationFrame(render)
       camera.updateProjectionMatrix()
-      camera?.updateMatrixWorld()
+      camera.updateMatrixWorld()
       TWEEN.update()
       controls.update()
       renderer.render(scene, camera)
+      if (composer) {
+        composer.render()
+      }
     }
     window.addEventListener('resize', () => {
       renderer?.setSize(container.value.clientWidth, container.value.clientHeight)
@@ -215,6 +241,16 @@ export default defineComponent({
         new TWEEN.Tween(modal.scale).to({ x: zoom.value, y: zoom.value, z: zoom.value }, 1000).start()
       }
     }
+
+    const handleStatus = (val) => {
+      const node = scene.getObjectByName('DMU-83P-002')
+      node.traverse((child: any) => {
+        const target = statusData.find((j) => j.label === val)
+        if (target.light && child.name.includes(target.light)) {
+          alert(JSON.stringify(child))
+        }
+      })
+    }
     return () => (
       <div class='container'>
         <div class='three' ref={container}></div>
@@ -236,7 +272,8 @@ export default defineComponent({
           </Popover>
           <Button onClick={zoomUp}>放大</Button>
           <Button onClick={zoomDown}>缩小</Button>
-          <Button onClick={handleMove}>移动</Button>
+          <Button onClick={() => handleStatus('加工')}>加工</Button>
+          <Button onClick={() => handleStatus('报警')}>报警</Button>
           <div>
             <InputNumber v-model:value={position.x} step={1}></InputNumber>
             <InputNumber v-model:value={position.y} step={1}></InputNumber>
