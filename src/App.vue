@@ -12,9 +12,9 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import TWEEN from '@tweenjs/tween.js'
 import { Button, Popover, InputNumber } from 'ant-design-vue'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment'
-// import { useWebSocket } from '@vueuse/core'
-import { positions, bindBone, statusData, wsData } from './data/index'
-import { wsMove, wsRotate, wsShowOrHide, wsStatus } from './data/handler'
+import { useWebSocket } from '@vueuse/core'
+import { positions, bindBone, statusData } from './data/index'
+import { wsMove, wsRotate, wsShowOrHide } from './data/handler'
 import { assign } from 'lodash-es'
 export default defineComponent({
   setup() {
@@ -25,7 +25,7 @@ export default defineComponent({
     let controls: OrbitControls
     let modal: THREE.Group
     let composer: EffectComposer
-    const allStatus = ref([])
+    const allStatus = ref(new Map())
     const rotate = ref(false)
     const zoom = ref(1)
     const position = reactive({
@@ -34,14 +34,12 @@ export default defineComponent({
       z: 30,
     })
 
-    // const { data, send, status } = useWebSocket('ws://192.168.1.40:1711/ws')
-    const customData = ref()
-    watch(customData, (val) => {
-      const { Contents, Result } = val as any
+    const { data, send, status } = useWebSocket('ws://192.168.1.40:1711/ws')
+    watch(data, (val) => {
+      const { Contents, Result } = JSON.parse(val)
       switch (Result) {
         // 初始化
         case 'SceneInit':
-          const status = []
           Contents.map((i) => {
             const node = scene.getObjectByName(i.number)
             const bind: any = bindBone.find((j) => i.number === j.label)?.value
@@ -63,23 +61,10 @@ export default defineComponent({
               // 状态
               if (i.status && i.status !== '关机') {
                 i.value = i.status
-                status.push(i)
+                wsStatus(i)
               }
             }
           })
-          status.map((i) => {
-            const node = scene.getObjectByName(i.number) as THREE.Mesh
-            node.traverse((child: any) => {
-              const target = statusData.find((j) => j.label === i.value)
-              if (target.light && child.name.includes(target.light)) {
-                allStatus.value.push({
-                  node: child,
-                  color: target.value,
-                })
-              }
-            })
-          })
-          initOutlinePass()
           break
         // 动作
         case 'actions':
@@ -102,7 +87,7 @@ export default defineComponent({
                 wsShowOrHide(i, scene, false)
                 break
               case '状态':
-                wsStatus(i, scene)
+                wsStatus(i)
                 break
               case '开门':
                 const node = scene.getObjectByName(i.number)
@@ -149,7 +134,6 @@ export default defineComponent({
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
       renderer.setPixelRatio(window.devicePixelRatio)
       renderer.setSize(container.value.clientWidth, container.value.clientHeight)
-      composer = new EffectComposer(renderer)
       container.value.appendChild(renderer.domElement)
     }
 
@@ -167,17 +151,17 @@ export default defineComponent({
       const gltf = await loader.loadAsync('./001.glb')
       modal = gltf.scene
       scene.add(modal)
-      // if (status.value === 'OPEN') {
-      //   send(JSON.stringify({ Result: 'SceneInit' }))
-      // }
-      customData.value = wsData
+      if (status.value === 'OPEN') {
+        send(JSON.stringify({ Result: 'SceneInit' }))
+      }
     }
     const initOutlinePass = () => {
+      composer = new EffectComposer(renderer)
       let renderScene = new RenderPass(scene, camera)
       composer.addPass(renderScene)
       const gammaCorrectionShader = new ShaderPass(GammaCorrectionShader)
       composer.addPass(gammaCorrectionShader)
-      allStatus.value.map((i) => {
+      allStatus.value.forEach((i) => {
         let outlinePass = new OutlinePass(new THREE.Vector2(container.value.clientWidth, container.value.clientHeight), scene, camera, [i.node])
         outlinePass.renderToScreen = true
         outlinePass.edgeGlow = 1
@@ -201,10 +185,22 @@ export default defineComponent({
         composer.render()
       }
     }
+    const wsStatus = (val) => {
+      const node = scene.getObjectByName(val.number)
+      node.traverse((child: any) => {
+        const target = statusData.find((j) => j.label === val.value)
+        if (target.light && child.name.includes(target.light)) {
+          allStatus.value.set(val.number, { node: child, color: target.value })
+        }
+      })
+      initOutlinePass()
+    }
+    
     window.addEventListener('resize', () => {
       renderer?.setSize(container.value.clientWidth, container.value.clientHeight)
       render()
     })
+
     onMounted(() => {
       initScene()
       initCamera()
@@ -214,7 +210,6 @@ export default defineComponent({
       initLight()
       render()
     })
-
     const handleRotate = () => {
       controls.autoRotate = !controls.autoRotate
       rotate.value = controls.autoRotate
@@ -241,16 +236,6 @@ export default defineComponent({
         new TWEEN.Tween(modal.scale).to({ x: zoom.value, y: zoom.value, z: zoom.value }, 1000).start()
       }
     }
-
-    const handleStatus = (val) => {
-      const node = scene.getObjectByName('DMU-83P-002')
-      node.traverse((child: any) => {
-        const target = statusData.find((j) => j.label === val)
-        if (target.light && child.name.includes(target.light)) {
-          alert(JSON.stringify(child))
-        }
-      })
-    }
     return () => (
       <div class='container'>
         <div class='three' ref={container}></div>
@@ -272,8 +257,6 @@ export default defineComponent({
           </Popover>
           <Button onClick={zoomUp}>放大</Button>
           <Button onClick={zoomDown}>缩小</Button>
-          <Button onClick={() => handleStatus('加工')}>加工</Button>
-          <Button onClick={() => handleStatus('报警')}>报警</Button>
           <div>
             <InputNumber v-model:value={position.x} step={1}></InputNumber>
             <InputNumber v-model:value={position.y} step={1}></InputNumber>

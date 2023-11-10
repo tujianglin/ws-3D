@@ -1,6 +1,5 @@
 import TWEEN from '@tweenjs/tween.js'
 import * as THREE from 'three'
-import { statusData } from './index'
 
 /* 移动数据 */
 export const wsMove = (i, scene) => {
@@ -70,15 +69,4 @@ export const wsShowOrHide = (i, scene, bool) => {
   if (node) {
     node.visible = bool
   }
-}
-
-/* 设备状态 */
-export const wsStatus = (i, scene) => {
-  const node = scene.getObjectByName(i.number)
-  node.traverse((child: any) => {
-    const target = statusData.find((j) => j.label === i.value)
-    if (target.light && child.name.includes(target.light)) {
-      child.material = target.value
-    }
-  })
 }
