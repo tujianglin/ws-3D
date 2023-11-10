@@ -162,9 +162,10 @@ export default defineComponent({
       const gammaCorrectionShader = new ShaderPass(GammaCorrectionShader)
       composer.addPass(gammaCorrectionShader)
       allStatus.value.forEach((i) => {
+        if (!i.color) return
         let outlinePass = new OutlinePass(new THREE.Vector2(container.value.clientWidth, container.value.clientHeight), scene, camera, [i.node])
         outlinePass.renderToScreen = true
-        outlinePass.edgeGlow = 1
+        outlinePass.edgeGlow = 3
         outlinePass.usePatternTexture = false
         outlinePass.edgeThickness = 2
         outlinePass.edgeStrength = 5
@@ -192,10 +193,13 @@ export default defineComponent({
         if (target.light && child.name.includes(target.light)) {
           allStatus.value.set(val.number, { node: child, color: target.value })
         }
+        if (val.value === '关机') {
+          allStatus.value.delete(val.number)
+        }
       })
       initOutlinePass()
     }
-    
+
     window.addEventListener('resize', () => {
       renderer?.setSize(container.value.clientWidth, container.value.clientHeight)
       render()
