@@ -1,4 +1,3 @@
-import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'
 import { useWebSocket } from '@vueuse/core'
@@ -6,7 +5,7 @@ import { signleEditor } from './index'
 import { watch } from 'vue'
 import { bindBone } from '/@/data'
 import { wsMove, wsRotate, wsShowOrHide, wsStatus } from './handler'
-import { assign } from 'lodash-es'
+import { assign, forIn } from 'lodash-es'
 
 export class InitModel extends signleEditor {
   constructor() {
@@ -35,13 +34,16 @@ export class InitModel extends signleEditor {
       (val) => {
         const { Contents, Result } = JSON.parse(val)
         switch (Result) {
-          case 'SceneInit':
+          case 'SceneInit': // 初始化
             this.initModelData(Contents)
             break
-          case 'actions':
+          case 'actions': // 驱动设备运动
             this.actionModelData(Contents)
             break
-          case 'WillScaleTheScene':
+          case 'RobotRecords': // 机器人姿态
+            this.robotRecordsData(Contents[0])
+            break
+          case 'WillScaleTheScene': // 镜头缩放比例
             Contents.map((i) => {
               this.camera.fov = +i.size
             })
@@ -109,6 +111,28 @@ export class InitModel extends signleEditor {
         case '开门':
           const node = this.scene.getObjectByName(i.number)
           console.log(node)
+          break
+        default:
+          break
+      }
+    })
+  }
+  /* 机器人记录 */
+  robotRecordsData = (data: any[]) => {
+    const recordData = []
+    forIn(data, (v, k) => {
+      const target = bindBone.find((i) => i.label === k)?.value
+      if (target) {
+        recordData.push(assign({}, target, { value: v }))
+      }
+    })
+    recordData.map((i) => {
+      switch (i.type) {
+        case '移动':
+          wsMove(i)
+          break
+        case '机器人旋转':
+          wsRotate(i)
           break
         default:
           break
