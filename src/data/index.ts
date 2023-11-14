@@ -71,3 +71,14 @@ export const statusData = [
     light: '三色灯黄',
   },
 ]
+
+export const mockData = {
+  Result: 'EquipmentStatus',
+  Contents: [
+    {
+      'DMU-83P-001': '加工',
+      'DMU-83P-002': '空闲',
+      'DMU-83P-003': '报警',
+    },
+  ],
+}

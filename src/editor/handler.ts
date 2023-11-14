@@ -91,3 +91,11 @@ export const wsStatus = (val) => {
   })
   editor.initOutlinePass()
 }
+
+export const wsOpenOrClose = (i, bool) => {
+  const editor = new signleEditor()
+  const node = editor.scene.getObjectByName(i.number)
+  if (node) {
+    new TWEEN.Tween(node.position).to({ x: bool ? 1664 : 0 }, 1000).start()
+  }
+}

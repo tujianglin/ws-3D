@@ -4,7 +4,7 @@ import { useWebSocket } from '@vueuse/core'
 import { signleEditor } from './index'
 import { watch } from 'vue'
 import { bindBone } from '/@/data'
-import { wsMove, wsRotate, wsShowOrHide, wsStatus } from './handler'
+import { wsMove, wsRotate, wsShowOrHide, wsStatus, wsOpenOrClose } from './handler'
 import { assign, forIn } from 'lodash-es'
 
 export class InitModel extends signleEditor {
@@ -35,10 +35,13 @@ export class InitModel extends signleEditor {
         const { Contents, Result } = JSON.parse(val)
         switch (Result) {
           case 'SceneInit': // 初始化
-            this.initModelData(Contents)
+            this.sceneInitData(Contents)
             break
           case 'actions': // 驱动设备运动
-            this.actionModelData(Contents)
+            this.actionsData(Contents)
+            break
+          case 'EquipmentStatus': // 设备状态
+            this.equipmentStatusData(Contents[0])
             break
           case 'RobotRecords': // 机器人姿态
             this.robotRecordsData(Contents[0])
@@ -58,7 +61,7 @@ export class InitModel extends signleEditor {
     )
   }
   /* 初始化模型数据 */
-  initModelData = (data: any[]) => {
+  sceneInitData = (data: any[]) => {
     data.map((i) => {
       const node = this.scene.getObjectByName(i.number)
       if (node) {
@@ -86,7 +89,7 @@ export class InitModel extends signleEditor {
     })
   }
   /* 模型动作数据 */
-  actionModelData = (data: any[]) => {
+  actionsData = (data: any[]) => {
     data.map((i) => {
       const bind: any = bindBone.find((j) => i.number === j.label)?.value
       if (bind) {
@@ -109,16 +112,32 @@ export class InitModel extends signleEditor {
           wsStatus(i)
           break
         case '开门':
-          const node = this.scene.getObjectByName(i.number)
-          console.log(node)
+          wsOpenOrClose(i, true)
+          break
+        case '关门':
+          wsOpenOrClose(i, false)
           break
         default:
           break
       }
     })
   }
+  /* 设备状态数据 */
+  equipmentStatusData = (data) => {
+    const statusData = []
+    forIn(data, (v, k) => {
+      statusData.push({
+        number: k,
+        type: '状态',
+        value: v,
+      })
+    })
+    statusData.map((i) => {
+      wsStatus(i)
+    })
+  }
   /* 机器人记录 */
-  robotRecordsData = (data: any[]) => {
+  robotRecordsData = (data) => {
     const recordData = []
     forIn(data, (v, k) => {
       const target = bindBone.find((i) => i.label === k)?.value
