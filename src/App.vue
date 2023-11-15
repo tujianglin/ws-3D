@@ -20,7 +20,9 @@ export default defineComponent({
     const handleReset = () => {
       editor.controls.autoRotate = false
       editor.rotate = editor.controls.autoRotate
+      editor.zoom = 1
       new TWEEN.Tween(editor.camera.position).to(positions[0].target, 1000).start()
+      new TWEEN.Tween(editor.model.scale).to({ x: editor.zoom, y: editor.zoom, z: editor.zoom }, 1000).start()
     }
     const showView = (position) => {
       new TWEEN.Tween(editor.camera.position).to(position, 1000).start()
