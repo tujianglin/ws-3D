@@ -68,11 +68,11 @@ class Editor {
       if (!i.color) return
       let outlinePass = new OutlinePass(new THREE.Vector2(this.container.clientWidth, this.container.clientHeight), this.scene, this.camera, [i.node])
       outlinePass.renderToScreen = true
-      outlinePass.edgeGlow = 3
+      outlinePass.edgeGlow = 1
       outlinePass.usePatternTexture = false
       outlinePass.edgeThickness = 2
       outlinePass.edgeStrength = 5
-      outlinePass.pulsePeriod = 2
+      outlinePass.pulsePeriod = 5
       outlinePass.visibleEdgeColor.set(i.color)
       outlinePass.hiddenEdgeColor.set(i.color)
       this.composer.addPass(outlinePass)
