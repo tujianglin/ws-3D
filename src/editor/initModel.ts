@@ -63,27 +63,46 @@ export class InitModel extends signleEditor {
   /* 初始化模型数据 */
   sceneInitData = (data: any[]) => {
     data.map((i) => {
-      const node = this.scene.getObjectByName(i.number)
+      const bind: any = bindBone.find((j) => i.number === j.label)?.value
+      const node = this.scene.getObjectByName(bind?.number)
       if (node) {
-        const bind: any = bindBone.find((j) => i.number === j.label)?.value
-        if (bind) {
-          // 移动
-          if (i.position) {
-            if (i.position === '0') return
-            bind.value = i.position
-            wsMove(bind)
-          }
-          // 旋转
-          if (i.rotation) {
-            if (i.rotation === '0') return
-            bind.value = i.rotation
-            wsRotate(bind)
-          }
+        // 移动
+        if (i.position) {
+          if (i.position === '0') return
+          bind.value = i.position
+          wsMove(bind)
         }
-        // 状态
-        if (i.status && i.status !== '关机') {
-          i.value = i.status
-          wsStatus(i)
+        // 旋转
+        if (i.rotation) {
+          if (i.rotation === '0') return
+          bind.value = i.rotation
+          wsRotate(bind)
+        }
+        // 显隐, 开关
+        if (i.type) {
+          bind.type = i.type
+          bind.duration = i.duration
+          switch (bind.type) {
+            case '显示':
+              wsShowOrHide(bind, true)
+              break
+            case '隐藏':
+              wsShowOrHide(bind, false)
+              break
+            case '状态':
+              if (i.value && i.value !== '关机') {
+                wsStatus(i)
+              }
+              break
+            case '开门':
+              wsOpenOrClose(bind, true)
+              break
+            case '关门':
+              wsOpenOrClose(bind, false)
+              break
+            default:
+              break
+          }
         }
       }
     })
@@ -92,8 +111,9 @@ export class InitModel extends signleEditor {
   actionsData = (data: any[]) => {
     data.map((i) => {
       const bind: any = bindBone.find((j) => i.number === j.label)?.value
+      const number = i.number
       if (bind) {
-        i = assign(i, { axis: bind.axis })
+        i = assign(i, { axis: bind?.axis, number: bind.number, duration: bind?.duration })
       }
       switch (i.type) {
         case '移动':
@@ -109,6 +129,7 @@ export class InitModel extends signleEditor {
           wsShowOrHide(i, false)
           break
         case '状态':
+          i.number = number
           wsStatus(i)
           break
         case '开门':
