@@ -96,6 +96,6 @@ export const wsOpenOrClose = (i, bool) => {
   const editor = new signleEditor()
   const node = editor.scene.getObjectByName(i.number)
   if (node) {
-    new TWEEN.Tween(node.position).to({ x: bool ? 0 : 1664 }, 1000).start()
+    new TWEEN.Tween(node.position).to({ x: bool ? 0 : i.value }, i.duration ? +i.duration * 1000 : 1000).start()
   }
 }

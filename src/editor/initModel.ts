@@ -79,29 +79,31 @@ export class InitModel extends signleEditor {
           wsRotate(bind)
         }
         // 显隐, 开关
-        if (i.type) {
-          bind.type = i.type
-          bind.duration = i.duration
-          switch (bind.type) {
-            case '显示':
-              wsShowOrHide(bind, true)
-              break
-            case '隐藏':
-              wsShowOrHide(bind, false)
-              break
-            case '状态':
-              if (i.value && i.value !== '关机') {
-                wsStatus(i)
-              }
-              break
-            case '开门':
-              wsOpenOrClose(bind, true)
-              break
-            case '关门':
-              wsOpenOrClose(bind, false)
-              break
-            default:
-              break
+        if (i.status) {
+          if (bind.type === '状态') {
+            if (i.status && i.status !== '关机') {
+              i.value = i.status
+              wsStatus(i)
+            }
+          } else {
+            bind.type = i.status
+            bind.duration = i.duration
+            switch (bind.type) {
+              case '显示':
+                wsShowOrHide(bind, true)
+                break
+              case '隐藏':
+                wsShowOrHide(bind, false)
+                break
+              case '开门':
+                wsOpenOrClose(bind, true)
+                break
+              case '关门':
+                wsOpenOrClose(bind, false)
+                break
+              default:
+                break
+            }
           }
         }
       }
@@ -113,13 +115,15 @@ export class InitModel extends signleEditor {
       const bind: any = bindBone.find((j) => i.number === j.label)?.value
       const number = i.number
       if (bind) {
-        i = assign(i, { axis: bind?.axis, number: bind.number, duration: bind?.duration })
+        i = assign(i, { number: bind.number })
       }
       switch (i.type) {
         case '移动':
+          i.axis = bind.axis
           wsMove(i)
           break
         case '机器人旋转':
+          i.axis = bind.axis
           wsRotate(i)
           break
         case '显示':
@@ -133,9 +137,11 @@ export class InitModel extends signleEditor {
           wsStatus(i)
           break
         case '开门':
+          i.value = bind.value
           wsOpenOrClose(i, true)
           break
         case '关门':
+          i.value = bind.value
           wsOpenOrClose(i, false)
           break
         default:
