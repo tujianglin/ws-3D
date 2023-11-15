@@ -23,7 +23,7 @@ export class InitModel extends signleEditor {
     this.handleData()
   }
   handleData = () => {
-    const { data, send, status } = useWebSocket('ws://192.168.1.40:1711/ws')
+    const { data, send, status } = useWebSocket(self.wsUrl)
     watch(status, (val) => {
       if (val === 'OPEN') {
         send(JSON.stringify({ Result: 'SceneInit' }))
