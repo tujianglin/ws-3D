@@ -10,10 +10,6 @@ export const wsMove = (i) => {
   if (node) {
     const duration = i.duration ? +i.duration * 1000 : 1000
     switch (i.axis) {
-      case 'O':
-        const [x, y, z] = i?.value.split(',').map((i) => +i)
-        new TWEEN.Tween(node.position).to({ x, y, z }, duration).start()
-        break
       case 'X':
         if (i.value.includes('#')) {
           new TWEEN.Tween(node.position).to({ x: i.value.replace(/#/g, '') }, duration).start()
@@ -36,6 +32,8 @@ export const wsMove = (i) => {
         }
         break
       default:
+        const [x = 0, y = 0, z = 0] = i?.value.split(',').map((i) => +i)
+        new TWEEN.Tween(node.position).to({ x, y, z }, duration).start()
         break
     }
   }

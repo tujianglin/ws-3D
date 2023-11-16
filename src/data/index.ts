@@ -111,6 +111,8 @@ export const bindBone = [
   { label: 'A5-1', value: { number: 'A5-1', axis: 'X', type: '机器人旋转' } },
   { label: 'A6-1', value: { number: 'A6-1', axis: 'Z', type: '机器人旋转' } },
   { label: 'A1-1', value: { number: 'A1-1', axis: 'Y', type: '机器人旋转' } },
+  { label: 'AGV下', value: { number: 'AGV下' } },
+  { label: 'AGV上', value: { number: 'AGV上' } },
 ]
 
 export const statusData = [

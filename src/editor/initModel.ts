@@ -119,11 +119,11 @@ export class InitModel extends signleEditor {
       }
       switch (i.type) {
         case '移动':
-          i.axis = bind.axis
+          i.axis = bind.axis || i.axis
           wsMove(i)
           break
         case '机器人旋转':
-          i.axis = bind.axis
+          i.axis = bind.axis || i.axis
           wsRotate(i)
           break
         case '显示':
